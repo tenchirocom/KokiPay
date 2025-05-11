@@ -1,18 +1,50 @@
-version: '2'
+version: '3.7'
 services:
-  silver:
-    image: presslabs/silver:latest
-    command: dockerize -wait tcp://db:3306 -timeout 30s /silver/docker-entrypoint
-    env_file: ./docker-compose.env
+  koki-pay:
+    build: .
     ports:
-      - "8080:8080"
-    volumes:
-      - .:/silver
-
-  db:
-    image: mysql:5.7
+      - "8010:8010"
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: silver
-      MYSQL_USER: silver
-      MYSQL_PASSWORD: password
+      - DATABASE_URL=postgres://koki_user:koki_pass@koki-pay-db:5432/koki_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - koki-pay-db
+      - redis
+    networks:
+      - koki-pay-network
+
+  koki-pay-db:
+    container_name: koki-pay-db
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=koki_db
+      - POSTGRES_USER=koki_user
+      - POSTGRES_PASSWORD=koki_pass
+    volumes:
+      - koki_postgres_data:/var/lib/postgresql/data
+    networks:
+      - koki-pay-network
+
+  redis:
+    image: redis:6
+    networks:
+      - koki-pay-network
+
+  koki-pay-celery:
+    build: .
+    command: /usr/local/bin/celery -A silver worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgres://koki_user:koki_pass@koki-pay-db:5432/koki_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - koki-pay-db
+      - redis
+    networks:
+      - koki-pay-network
+
+volumes:
+  koki_postgres_data:
+
+networks:
+  koki-pay-network:
+    driver: bridge

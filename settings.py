@@ -1,136 +1,33 @@
-# Copyright (c) 2015 Presslabs SRL
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-import os
-import datetime
-import sys
-
 import environ
-
-from silver import HOOK_EVENTS as _HOOK_EVENTS
-from django.utils.log import DEFAULT_LOGGING as LOGGING
-
-"""
-These settings are used by the ``manage.py`` command.
-
-"""
+import dj_database_url
+import os
 
 env = environ.Env()
 
-DEBUG = False
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-SITE_ID = 1
+SECRET_KEY = env('SECRET_KEY', default='HZ_Q62IIVld0dnppprxycIQlvmPgGKYbjzlw-9ZlbUrc1cXE_NEisIAUslKHQl0KhEg')
+PAYMENT_METHOD_SECRET = 'pSZUL6cYaH6-E_OA-mlRuURgGHmn0wd5J7HwRk60A2s='
 
-USE_TZ = True
-TIME_ZONE = 'UTC'
+DEBUG = env.bool('DEBUG', default=False)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
-try:
-    import environ
-
-    DATABASES = {
-        'default': env.db("SILVER_DB_URL",
-                          "sqlite:///%s" % os.path.join(os.path.dirname(__file__), "db.sqlite"))
-    }
-except ImportError:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': 'db.sqlite',
-        }
-    }
-
-if "mysql" in DATABASES["default"]["ENGINE"]:
-    try:
-        # https://adamj.eu/tech/2020/02/04/how-to-use-pymysql-with-django/
-        import pymysql
-
-        # change mysqlclient version to work with Django 3+,
-        # as stated on https://github.com/PyMySQL/PyMySQL/issues/790
-        pymysql.version_info = (1, 4, 6, 'final', 0)
-
-        pymysql.install_as_MySQLdb()
-    except ImportError:
-        pass
-
-EXTERNAL_APPS = [
-    # Django autocomplete
+INSTALLED_APPS = [
     'dal',
     'dal_select2',
-
-    # Django core apps
-    # 'django_admin_bootstrapped',
     'django.contrib.admin',
-    'django.contrib.admindocs',
     'django.contrib.auth',
     'django.contrib.contenttypes',
-    'django.contrib.messages',
     'django.contrib.sessions',
+    'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Required apps
-    'django_fsm',
     'rest_framework',
     'django_filters',
-
-    # Dev tools
-    # 'django_extensions',
-]
-
-INTERNAL_APPS = [
     'silver',
 ]
 
-INSTALLED_APPS = EXTERNAL_APPS + INTERNAL_APPS
-
-ROOT_URLCONF = 'silver.urls'
-PROJECT_ROOT = os.path.dirname(__file__)
-
-FIXTURE_DIRS = (
-    PROJECT_ROOT,
-    PROJECT_ROOT + '/silver/'
-)
-
-TEMPLATES = [
-    {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'APP_DIRS': True,
-        'DIRS': [
-            PROJECT_ROOT + '/payment_processors/templates/',
-            PROJECT_ROOT + '/templates/',
-            PROJECT_ROOT + '/silver/templates/',
-        ],
-        'OPTIONS': {
-            'context_processors': (
-                "django.contrib.auth.context_processors.auth",
-                "django.template.context_processors.debug",
-                "django.template.context_processors.i18n",
-                "django.template.context_processors.media",
-                "django.template.context_processors.static",
-                "django.template.context_processors.tz",
-                "django.template.context_processors.request",
-                "django.contrib.messages.context_processors.messages",
-            )
-        }
-    }
-]
-
-MEDIA_ROOT = PROJECT_ROOT + '/app_media/'
-MEDIA_URL = '/app_media/'
-
-STATIC_ROOT = PROJECT_ROOT + '/app_static/'
-STATIC_URL = '/app_static/'
-
 MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -139,80 +36,118 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-SECRET_KEY = 'secret'
+ROOT_URLCONF = 'silver.urls'
+WSGI_APPLICATION = 'silver.wsgi.application'
+
+DATABASES = {
+    'default': dj_database_url.config(
+        env='DATABASE_URL',
+        default='sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite')
+    )
+}
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-        'rest_framework.renderers.BrowsableAPIRenderer',
-    ),
-    'DEFAULT_PAGINATION_CLASS': 'silver.api.pagination.LinkHeaderPagination',
-    'TEST_REQUEST_DEFAULT_FORMAT': 'json'
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
 }
 
-HOOK_EVENTS = _HOOK_EVENTS
-
-SILVER_DEFAULT_DUE_DAYS = 5
-SILVER_DOCUMENT_PREFIX = 'documents/'
-SILVER_DOCUMENT_STORAGE = None
-SILVER_PAYMENT_TOKEN_EXPIRATION = datetime.timedelta(minutes=5)
-SILVER_AUTOMATICALLY_CREATE_TRANSACTIONS = True
-
-LOGGING['loggers']['xhtml2pdf'] = {
-    'level': 'DEBUG',
-    'handlers': ['console']
-}
-
-LOGGING['loggers']['pisa'] = {
-    'level': 'DEBUG',
-    'handlers': ['console']
-}
-
-LOGGING['loggers']['django'] = {
-    'level': 'DEBUG',
-    'handlers': ['console']
-}
-
-LOGGING['loggers']['django.security'] = {
-    'level': 'DEBUG',
-    'handlers': ['console']
-}
-LOGGING['formatters'] = LOGGING.get('formatters', {})
-LOGGING['formatters']['verbose'] = {
-    'format': "[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s",
-    'datefmt': "%d/%b/%Y %H:%M:%S"
-}
-
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+#CELERY_BROKER_URL = env('REDIS_URL', default='redis://redis:6379/0')
+#CELERY_RESULT_BACKEND = env('REDIS_URL', default='redis://redis:6379/0')
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_BROKER_TRANSPORT = 'redis'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
 
 PAYMENT_PROCESSORS = {
     'manual': {
-        'class': 'silver.payment_processors.manual.ManualProcessor'
+        'class': 'silver.payment_processors.ManualProcessor',
+        'name': 'Manual Payment Processor',
     },
 }
 
-PAYMENT_METHOD_SECRET = b'YOUR_FERNET_KEY_HERE'  # Fernet.generate_key()
+LOCK_MANAGER_CONNECTION = {
+#    'host': env('REDIS_HOST', default='redis'),
+    'host': 'redis',
+    'port': 6379,
+    'db': 1,
+}
 
-CELERY_BROKER_URL = 'redis://localhost:6379/'
-CELERY_BEAT_SCHEDULE = {
-    'generate-pdfs': {
-        'task': 'silver.tasks.generate_pdfs',
-        'schedule': datetime.timedelta(seconds=5)
+PAYMENT_METHOD_SECRET = 'pSZUL6cYaH6-E_OA-mlRuURgGHmn0wd5J7HwRk60A2s='
+
+# Silver payment processors configuration
+PAYMENT_PROCESSORS = {
+    'manual': {
+        'class': 'silver.payment_processors.ManualProcessor',
+        'name': 'Manual Payment Processor',
     },
 }
-LOCK_MANAGER_CONNECTION = {'host': 'localhost', 'port': 6379, 'db': 1}
 
-PDF_GENERATION_TIME_LIMIT = 60
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-TRANSACTION_SAVE_TIME_LIMIT = 5
-
-try:
-    from settings_local import *
-except ImportError:
-    pass
-
-if sys.argv[0].endswith('pytest'):
-    from silver.fixtures.test_fixtures import PAYMENT_PROCESSORS
-    PAYMENT_DUE_DAYS = 5
-    REST_FRAMEWORK['PAGE_SIZE'] = API_PAGE_SIZE = 5
-    SILVER_SHOW_PDF_STORAGE_URL = True
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[%(asctime)s] %(levelname)s [%(name)s:%(lineno)s] %(message)s',
+            'datefmt': '%d/%b/%Y %H:%M:%S'
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose'
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'DEBUG',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'xhtml2pdf': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'pisa': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'pycountry.db': {
+            'handlers': ['console'],
+            'level': 'ERROR',  # Suppress DEBUG warnings
+            'propagate': False,
+        },
+    },
+}

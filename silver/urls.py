@@ -19,6 +19,9 @@ from __future__ import absolute_import
 
 from django.conf.urls import include, re_path
 from django.contrib import admin
+from django.http import HttpResponse
+from django.conf import settings
+from django.views.static import serve
 
 from silver.views import (pay_transaction_view, complete_payment_view,
                           InvoiceAutocomplete, ProformaAutocomplete,
@@ -28,6 +31,8 @@ from silver.views import (pay_transaction_view, complete_payment_view,
 
 admin.autodiscover()
 
+def home_view(request):
+    return HttpResponse("Welcome to KokiPay! Visit /admin/ or /api/ for more.")
 
 urlpatterns = [
     re_path(r'^admin/', admin.site.urls),
@@ -52,4 +57,6 @@ urlpatterns = [
             CustomerAutocomplete.as_view(), name='autocomplete-customer'),
     re_path(r'^autocomplete/provider/$',
             ProviderAutocomplete.as_view(), name='autocomplete-provider'),
+    re_path(r'^$', home_view, name='home'),
+    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_ROOT}),
 ]

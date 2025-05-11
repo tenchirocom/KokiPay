@@ -1,13 +1,31 @@
 #!/bin/sh
 set -e
-
-if [ "$SILVER_MIGRATE" == "yes" ] ; then
-/usr/local/bin/python2 /silver/manage.py migrate --noinput
-fi
-
-if [ "$SILVER_LOAD_DEV_DATA" == "yes" ] ; then
-    /usr/local/bin/python2 /silver/manage.py loaddata -i fixtures/initial_dev_data.json
-fi
-
-exec /usr/local/bin/python2 /silver/manage.py runserver 0.0.0.0:8080
-
+# Wait for PostgreSQL
+#dockerize -wait tcp://koki-pay-db:5432 -timeout 60s
+echo "*** Koki-Pay Service Starting ***"
+echo "Checking dependencies..."
+dockerize -wait tcp://koki-pay-db:5432 -wait tcp://redis:6379 -timeout 60s
+echo "...Done."
+# Run migrations
+echo "[$(date)] Creating migrations..."
+python manage.py makemigrations silver
+echo "...Done."
+echo "[$(date)] Applying migrations..."
+python manage.py migrate
+echo "...Done."
+echo "[$(date)] Creating superuser..."
+#echo "from django.contrib.auth.models import User; User.objects.create_superuser('admin', 'admin@example.com', 'admin123')" | python manage.py shell
+#echo "from django.contrib.auth.models import User; User.objects.filter(username='admin').delete(); User.objects.create_superuser('admin', 'admin@example.com', 'admin123')" | python manage.py shell
+echo "from django.contrib.auth.models import User;
+if not User.objects.filter(username='admin').exists():
+    User.objects.create_superuser('admin', 'admin@example.com', 'admin123')" | python manage.py shell
+echo "...Done."
+echo "[$(date)] Collecting static files..."
+rm -rf /koki-pay/staticfiles/*
+python manage.py collectstatic --noinput
+echo "...Done."
+echo "[$(date)] Checking configuration..."
+python manage.py check
+echo "...Done."
+# Start Gunicorn
+exec gunicorn --bind 0.0.0.0:8010 silver.wsgi

@@ -1,50 +1,53 @@
-FROM python:3.9-alpine
+FROM python:3.9-slim
 MAINTAINER Presslabs ping@presslabs.com
 
-# Ensure that Python outputs everything that's printed inside
-# the application rather than buffering it, maily for logging purposes
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
+ENV DJANGO_SETTINGS_MODULE=silver.settings
 
-# Set default django settings module
-ENV DJANGO_SETTINGS_MODULE settings
+EXPOSE 8010
 
-# silver app runs on port 8080
-EXPOSE 8080
+RUN mkdir -p /koki-pay
+WORKDIR /koki-pay
 
-RUN set -ex && mkdir -p /silver
-WORKDIR /silver
+COPY requirements.txt /koki-pay/requirements.txt
+COPY requirements/common.txt /koki-pay/requirements/common.txt
 
-# Install silver
-COPY ./requirements /silver/requirements
-
-RUN set -ex \
-    && apk update \
-    && apk add --no-cache \
-        freetype-dev \
-        mariadb-client \
-        libjpeg-turbo \
-        jpeg \
-        zlib \
-        ca-certificates wget \
-        openssl \
-        openssl-dev \
+RUN apt-get update && \
+    apt-get install -y \
+        libpq-dev \
+        gcc \
+        g++ \
         libffi-dev \
-        zlib-dev \
-        jpeg-dev \
-        build-base \
-    && apk add --no-cache --virtual .build-deps \
-        mariadb-dev \
-    && update-ca-certificates \
-    && pip install --no-cache-dir -r requirements/common.txt \
-    && pip install --no-cache-dir gunicorn==19.4.5 \
-    && pip install --no-cache-dir mysqlclient \
-    && apk del .build-deps \
-    && wget -qO- https://github.com/jwilder/dockerize/releases/download/v0.2.0/dockerize-linux-amd64-v0.2.0.tar.gz | tar -zxf - -C /usr/bin \
-    && chown root:root /usr/bin/dockerize
+        libssl-dev \
+        libjpeg-dev \
+        zlib1g-dev \
+        wget \
+        ca-certificates \
+        libxml2-dev \
+        libxslt-dev \
+        python3-dev && \
+    pip install --no-cache-dir pip==23.3.2 && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir gunicorn==20.1.0 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    wget -qO- https://github.com/jwilder/dockerize/releases/download/v0.6.1/dockerize-linux-amd64-v0.6.1.tar.gz | \
+    tar -zxf - -C /usr/bin && \
+    chown root:root /usr/bin/dockerize
 
+RUN useradd -m -u 1000 koki && \
+    mkdir -p /koki-pay/silver/migrations /koki-pay/staticfiles && \
+    chown -R koki:koki /koki-pay && \
+    chmod -R u+rwX /koki-pay/silver/migrations /koki-pay/staticfiles -R
 
-COPY ./ /silver
+COPY manage.py /koki-pay/
+COPY silver /koki-pay/silver
+COPY settings.py /koki-pay/silver/settings.py
+COPY docker-entrypoint /docker-entrypoint
+RUN chmod +x /docker-entrypoint && \
+    chown koki:koki /koki-pay -R && \
+    chmod u+rwX /koki-pay/silver/migrations /koki-pay/staticfiles -R
 
-VOLUME /silver
+USER koki
 
 CMD ["/docker-entrypoint"]
