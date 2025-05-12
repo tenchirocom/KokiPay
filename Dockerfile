@@ -41,6 +41,7 @@ RUN useradd -m -u 1000 koki && \
     chmod -R u+rwX /koki-pay/silver/migrations /koki-pay/staticfiles -R
 
 COPY manage.py /koki-pay/
+COPY keys.py /koki-pay/
 COPY silver /koki-pay/silver
 COPY settings.py /koki-pay/silver/settings.py
 COPY docker-entrypoint /docker-entrypoint

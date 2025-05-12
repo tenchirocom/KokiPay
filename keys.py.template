@@ -1,0 +1,34 @@
+#
+# SECRET KEY FILE
+#
+# THE REPO CONTAINS A TEMPLATE ONLY FOR THE REQUIRED keys.py FILE. DO NOT PUT THE keys.py
+# FILE GENERATED WITH THE ENCLOSED INSTRUCTIONS IN PUBLICLY ACCESSIBLE PLACES, SUCH AS THE
+# TEMPLATE, WHICH MIGHT GET COPIED TO THE GENERAL REPOSITORY.
+#
+# Key generation:
+#
+#    Start at the toplevel directory of KokiPay.
+#
+#    Copy the keys.py.template into a file called 'keys.py' using the command below. The
+#    file keys.py should never be put in publicly accessible places such as pushing to
+#    the pubic repository.
+#        %cp keys.py.template keys.py
+#
+#    Next, generate the required keys:
+#
+#    SECRET_KEY - Use the python to generate the key with the following shell command:
+#        %python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+#
+#    PAYMENT_METHOD_SECRET - Use the python script to generate the Fernet key with the
+#    shell command:
+#        %python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#     
+#    Edit keys.py and replace the contents of the two keys below with the output generated above.
+#    Then rebuild the system using the instructions in README.md.
+#
+#    Keep this new file keys.py confidential. Do not add it to the repository.
+#
+import environ
+env = environ.Env()
+SECRET_KEY = 'secret'
+PAYMENT_METHOD_SECRET = b'YOUR_FERNET_KEY_HERE'  # Fernet.generate_key()

@@ -1,13 +1,11 @@
 import environ
 import dj_database_url
 import os
+from keys import SECRET_KEY, PAYMENT_METHOD_SECRET 
 
 env = environ.Env()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-SECRET_KEY = env('SECRET_KEY', default='HZ_Q62IIVld0dnppprxycIQlvmPgGKYbjzlw-9ZlbUrc1cXE_NEisIAUslKHQl0KhEg')
-PAYMENT_METHOD_SECRET = 'pSZUL6cYaH6-E_OA-mlRuURgGHmn0wd5J7HwRk60A2s='
 
 DEBUG = env.bool('DEBUG', default=False)
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
